@@ -1,0 +1,111 @@
+-- Base de datos para el proyecto de gestión académica y financiera con soporte para Google Calendar (PostgreSQL)
+
+-- Crear los tipos ENUM necesarios
+CREATE TYPE prioridad_tarea AS ENUM ('ALTA', 'MEDIA', 'BAJA');
+CREATE TYPE estado_tarea AS ENUM ('PENDIENTE', 'COMPLETADA');
+CREATE TYPE origen_ingreso AS ENUM ('TRABAJO', 'PADRES', 'BECA', 'OTROS');
+CREATE TYPE categoria_gasto AS ENUM ('PASAJES', 'COMIDA', 'DESAYUNO', 'FOTOCOPIAS', 'MATERIAL', 'OCIO', 'OTROS');
+CREATE TYPE rol_usuario AS ENUM ('ESTUDIANTE');
+
+-- Tabla de usuarios
+CREATE TABLE usuario (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL, -- contraseña encriptada con BCrypt
+    rol rol_usuario DEFAULT 'ESTUDIANTE',
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla para almacenar tokens de Google Calendar por usuario
+CREATE TABLE usuario_token (
+    id SERIAL PRIMARY KEY,
+    usuario_id INT NOT NULL UNIQUE, -- Un usuario solo puede tener un token (el de su calendario)
+    access_token TEXT NOT NULL, -- Token de acceso (puede ser encriptado en la aplicación)
+    refresh_token TEXT NOT NULL, -- Token de refresco
+    token_expiry TIMESTAMP NOT NULL, -- Fecha de expiración del access_token
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuario(id) ON DELETE CASCADE
+);
+
+-- Tabla de tareas académicas (agregamos google_event_id)
+CREATE TABLE tarea (
+    id SERIAL PRIMARY KEY,
+    titulo VARCHAR(200) NOT NULL,
+    descripcion TEXT,
+    fecha_limite DATE NOT NULL,
+    prioridad prioridad_tarea NOT NULL DEFAULT 'MEDIA',
+    estado estado_tarea NOT NULL DEFAULT 'PENDIENTE',
+    usuario_id INT NOT NULL,
+    google_event_id VARCHAR(255), -- ID del evento en Google Calendar (si se creó)
+    FOREIGN KEY (usuario_id) REFERENCES usuario(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_tarea_usuario ON tarea(usuario_id);
+CREATE INDEX idx_tarea_fecha_limite ON tarea(fecha_limite);
+CREATE INDEX idx_tarea_estado ON tarea(estado);
+CREATE INDEX idx_tarea_google_event_id ON tarea(google_event_id); -- Para búsquedas por evento
+
+-- Tabla de asignaturas
+CREATE TABLE asignatura (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    usuario_id INT NOT NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuario(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_asignatura_usuario ON asignatura(usuario_id);
+
+-- Tabla de ponderaciones (porcentajes de cada evaluación en una asignatura)
+CREATE TABLE ponderacion (
+    id SERIAL PRIMARY KEY,
+    asignatura_id INT NOT NULL,
+    porcentaje NUMERIC(3,2) NOT NULL, -- ej: 0.10 para 10%, la suma debe ser 1.00
+    orden INT NOT NULL, -- número de orden (1,2,3,4) para identificar la evaluación
+    FOREIGN KEY (asignatura_id) REFERENCES asignatura(id) ON DELETE CASCADE,
+    UNIQUE (asignatura_id, orden),
+    CONSTRAINT chk_porcentaje CHECK (porcentaje >= 0 AND porcentaje <= 1)
+);
+CREATE INDEX idx_ponderacion_asignatura ON ponderacion(asignatura_id);
+
+-- Tabla de evaluaciones (notas registradas)
+CREATE TABLE evaluacion (
+    id SERIAL PRIMARY KEY,
+    asignatura_id INT NOT NULL,
+    ponderacion_id INT NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    nota NUMERIC(4,2) NOT NULL, -- de 0 a 20
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (asignatura_id) REFERENCES asignatura(id) ON DELETE CASCADE,
+    FOREIGN KEY (ponderacion_id) REFERENCES ponderacion(id) ON DELETE CASCADE,
+    UNIQUE (asignatura_id, ponderacion_id), -- garantiza una sola evaluación por ponderación en una asignatura
+    CONSTRAINT chk_nota CHECK (nota >= 0 AND nota <= 20)
+);
+CREATE INDEX idx_evaluacion_asignatura ON evaluacion(asignatura_id);
+
+-- Tabla de ingresos
+CREATE TABLE ingreso (
+    id SERIAL PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    concepto VARCHAR(200) NOT NULL,
+    monto NUMERIC(10,2) NOT NULL,
+    fecha DATE NOT NULL,
+    origen origen_ingreso NOT NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuario(id) ON DELETE CASCADE,
+    CONSTRAINT chk_monto_ingreso CHECK (monto > 0)
+);
+CREATE INDEX idx_ingreso_usuario ON ingreso(usuario_id);
+CREATE INDEX idx_ingreso_fecha ON ingreso(fecha);
+
+-- Tabla de gastos
+CREATE TABLE gasto (
+    id SERIAL PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    concepto VARCHAR(200) NOT NULL,
+    monto NUMERIC(10,2) NOT NULL,
+    fecha DATE NOT NULL,
+    categoria categoria_gasto NOT NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuario(id) ON DELETE CASCADE,
+    CONSTRAINT chk_monto_gasto CHECK (monto > 0)
+);
+CREATE INDEX idx_gasto_usuario ON gasto(usuario_id);
+CREATE INDEX idx_gasto_fecha ON gasto(fecha);
