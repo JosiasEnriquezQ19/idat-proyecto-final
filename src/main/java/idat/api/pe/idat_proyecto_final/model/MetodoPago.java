@@ -1,7 +1,5 @@
 package idat.api.pe.idat_proyecto_final.model;
 
-import java.time.LocalDate;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -11,18 +9,14 @@ import jakarta.persistence.Table;
 import lombok.Data;
 
 @Entity
-@Table(name = "usuario")
+@Table(name = "metodo_pago")
 @Data
-public class usuario {
+public class MetodoPago {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-    private String nombre;
-    private String email;
-    private String password;
-    private String rol;
 
-    @Column(name = "fecha_creacion")
-    private LocalDate fechaCreacion;
+    @Column(nullable = false, unique = true, length = 50)
+    private String nombre;
 }
