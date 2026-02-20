@@ -1,5 +1,8 @@
 package idat.api.pe.idat_proyecto_final.service;
 
-public class IUsuarioService {
-    
+import idat.api.pe.idat_proyecto_final.model.Usuario;
+
+public interface IUsuarioService {
+
+    Usuario getUsuarioByEmail(String email);
 }

@@ -1,0 +1,12 @@
+package idat.api.pe.idat_proyecto_final.security;
+
+import org.springframework.security.core.userdetails.UserDetails;
+
+public interface IJwtService {
+
+    String generateToken(UserDetails userDetails);
+
+    String extractUsername(String token);
+
+    boolean isTokenValid(String token, UserDetails userDetails);
+}

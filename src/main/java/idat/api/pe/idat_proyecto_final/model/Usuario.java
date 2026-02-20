@@ -26,3 +26,7 @@ public class Usuario {
     @Column(name = "fecha_creacion")
     private LocalDate fechaCreacion;
 }
+
+enum Rol {
+    ESTUDIANTE, DOCENTE
+}
