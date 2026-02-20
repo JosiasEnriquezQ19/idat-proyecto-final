@@ -1,6 +1,6 @@
 package idat.api.pe.idat_proyecto_final.model;
 
-import java.sql.Date;
+import java.time.LocalDate;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,5 +24,5 @@ public class usuario {
     private String rol;
 
     @Column(name = "fecha_creacion")
-    private Date fechaCreacion;
+    private LocalDate fechaCreacion;
 }
